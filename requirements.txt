@@ -1,0 +1,10 @@
+flask==2.3.3
+flask-cors==4.0.0
+requests==2.31.0
+apscheduler==3.10.4
+psutil==5.9.5
+pywin32==306
+
+# Примечание: pywin32 требует запуска скрипта post-install:
+# python -m pip install pywin32
+# python -m pywin32_postinstall -install
