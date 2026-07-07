@@ -2,7 +2,7 @@
     "openweather_api_key": "53588f3b92c42b398c3d31f98b470a55",
     "city": "Chișinău",
     "printer_name": "80mm Series Printer",
-    "tape_width_mm": 80,
+    "tape_width_mm": 58,
     "schedule": {
         "enabled": false,
         "time": "09:00",

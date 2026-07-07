@@ -1,7 +1,6 @@
 """
-Модуль для печати на Windows принтер
-Работает с POS895UE и другими принтерами через встроенные Windows команды
-(БЕЗ pywin32 - полностью встроенное решение)
+Модуль для печати на чековый принтер через ESC/POS
+Работает с USB принтерами типа 80mm Series Printer
 """
 import subprocess
 import tempfile
@@ -9,31 +8,39 @@ import os
 import sys
 import time
 
+# Попробуем использовать python-escpos если установлена
+try:
+    from escpos.printer import Usb
+    ESCPOS_AVAILABLE = True
+except ImportError:
+    ESCPOS_AVAILABLE = False
+
 def print_receipt(text, printer_name):
     """
-    Печать текста на принтер
+    Печать текста на чековый принтер
     
     Args:
         text: Строка текста для печати
-        printer_name: Имя принтера в системе
+        printer_name: Имя принтера в системе (80mm Series Printer)
     
     Returns:
         bool: True если успешно, False если ошибка
     """
     
     try:
-        # Метод 1: Попробовать через Notepad (самый надежный для обычного текста)
-        result = print_via_notepad(text, printer_name)
+        # Метод 1: Попробовать ESC/POS через python-escpos
+        if ESCPOS_AVAILABLE:
+            result = print_via_escpos(text)
+            if result:
+                return True
+        
+        # Метод 2: Попробовать через Notepad (работает из теста)
+        result = print_via_notepad(text)
         if result:
             return True
         
-        # Метод 2: Попробовать через встроенную команду print
+        # Метод 3: Отправить через print команду
         result = print_via_print_command(text, printer_name)
-        if result:
-            return True
-        
-        # Метод 3: Попробовать через type и LPT1 (для чековых принтеров)
-        result = print_via_lpt(text, printer_name)
         if result:
             return True
         
@@ -45,10 +52,55 @@ def print_receipt(text, printer_name):
         return False
 
 
-def print_via_notepad(text, printer_name):
+def print_via_escpos(text):
     """
-    Печать через Notepad + встроенная команда print
-    Это самый надежный способ для Windows
+    Печать через python-escpos (ESC/POS команды)
+    Это правильный способ для чековых принтеров
+    """
+    try:
+        if not ESCPOS_AVAILABLE:
+            return False
+        
+        # USB принтер (80mm Series Printer)
+        # Попробуем найти по USB ID (Эти значения типичны для чековых принтеров)
+        try:
+            # Стандартные USB ID для чековых принтеров
+            printer = Usb(0x0416, 0x5011)  # Xprinter
+        except:
+            try:
+                printer = Usb(0x0483, 0x0201)  # ZJiang
+            except:
+                try:
+                    printer = Usb(0x04b8, 0x0202)  # Epson
+                except:
+                    return False
+        
+        # Обработать текст
+        lines = text.split('\n')
+        
+        for line in lines:
+            # Отправить строку
+            if line.strip():
+                printer.text(line + '\n')
+            else:
+                printer.text('\n')
+        
+        # Завершить печать
+        printer.cut()
+        printer.close()
+        
+        print("✓ Печать через ESC/POS успешна")
+        return True
+    
+    except Exception as e:
+        print(f"Ошибка ESC/POS: {e}")
+        return False
+
+
+def print_via_notepad(text):
+    """
+    Печать через Notepad (раз из Notepad печатает, используем это)
+    Создаем файл и открываем его в Notepad с параметром печати
     """
     try:
         # Создать временный файл
@@ -57,39 +109,23 @@ def print_via_notepad(text, printer_name):
             temp_file = f.name
         
         try:
-            # Попробовать несколько вариантов команды print
-            commands = [
-                # Вариант 1: Стандартная команда print
-                f'print /d:"{printer_name}" "{temp_file}"',
-                
-                # Вариант 2: С явным указанием Notepad
-                f'notepad /p "{temp_file}" "{printer_name}"',
-                
-                # Вариант 3: Через PowerShell
-                f'powershell -Command "$printers = Get-Printer; '
-                f'Get-Content \'{temp_file}\' | '
-                f'Out-Printer -Name \'{printer_name}\'"',
-            ]
+            # Notepad с параметром печати на принтер по умолчанию
+            cmd = f'notepad /pt "{temp_file}" "80mm Series Printer"'
             
-            for cmd in commands:
-                try:
-                    result = subprocess.run(
-                        cmd,
-                        shell=True,
-                        capture_output=True,
-                        text=True,
-                        timeout=30
-                    )
-                    
-                    if result.returncode == 0:
-                        print(f"✓ Печать успешна на {printer_name}")
-                        return True
-                except subprocess.TimeoutExpired:
-                    continue
-                except Exception as e:
-                    continue
+            result = subprocess.run(
+                cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
             
-            return False
+            # Notepad /pt работает тихо, проверяем return code
+            if result.returncode == 0:
+                print(f"✓ Печать через Notepad успешна")
+                return True
+            else:
+                return False
         
         finally:
             # Удалить временный файл с задержкой
@@ -101,7 +137,7 @@ def print_via_notepad(text, printer_name):
                     pass
     
     except Exception as e:
-        print(f"Ошибка print_via_notepad: {e}")
+        print(f"Ошибка Notepad печати: {e}")
         return False
 
 
@@ -127,10 +163,11 @@ def print_via_print_command(text, printer_name):
                 timeout=30
             )
             
-            if result.returncode == 0:
-                print(f"✓ Печать успешна на {printer_name} (print command)")
+            if result.returncode == 0 and "Unable" not in result.stdout:
+                print(f"✓ Печать через print команду успешна")
                 return True
             else:
+                print(f"⚠ Print команда: {result.stdout}")
                 return False
         
         finally:
@@ -142,41 +179,7 @@ def print_via_print_command(text, printer_name):
                     pass
     
     except Exception as e:
-        print(f"Ошибка print_via_print_command: {e}")
-        return False
-
-
-def print_via_lpt(text, printer_name):
-    """
-    Печать прямой отправкой на LPT порт (для чековых принтеров)
-    """
-    try:
-        # Найти порт принтера
-        import winreg
-        
-        key = winreg.OpenKey(
-            winreg.HKEY_LOCAL_MACHINE,
-            r"SYSTEM\CurrentControlSet\Control\Print\Printers"
-        )
-        
-        try:
-            subkey = winreg.OpenKey(key, printer_name)
-            port, _ = winreg.QueryValueEx(subkey, "Port")
-            winreg.CloseKey(subkey)
-            winreg.CloseKey(key)
-            
-            # Отправить текст напрямую на порт
-            with open(port, 'w', encoding='utf-8', errors='replace') as printer:
-                printer.write(text)
-            
-            print(f"✓ Печать успешна на {printer_name} (LPT)")
-            return True
-        
-        except:
-            return False
-    
-    except Exception as e:
-        print(f"Ошибка print_via_lpt: {e}")
+        print(f"Ошибка print команды: {e}")
         return False
 
 
@@ -185,10 +188,9 @@ def get_printer_status(printer_name):
     Получить статус принтера
     """
     try:
-        # Просто проверить что принтер существует
         import subprocess
         
-        cmd = f'wmic printerjob where name like "%{printer_name}%" get status'
+        cmd = f'wmic printer where name="{printer_name}" get printerstatus'
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         
         return {
@@ -197,80 +199,3 @@ def get_printer_status(printer_name):
         }
     except:
         return None
-
-def print_receipt_lpr(text, printer_name):
-    """
-    Печать через LPR (для сетевых принтеров)
-    Используется если принтер подключен по IP
-    """
-    try:
-        # Парсим IP адрес и очередь из имени принтера
-        # Формат: "IP_адрес:queue_name"
-        if ':' in printer_name:
-            host, queue = printer_name.split(':')
-        else:
-            host = printer_name
-            queue = 'lp'
-        
-        # Создать временный файл
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as f:
-            f.write(text)
-            temp_file = f.name
-        
-        try:
-            # Отправить через LPR
-            cmd = f'lpr -S {host} -P {queue} {temp_file}'
-            result = subprocess.run(cmd, shell=True, capture_output=True, timeout=30)
-            return result.returncode == 0
-        finally:
-            if os.path.exists(temp_file):
-                try:
-                    os.unlink(temp_file)
-                except:
-                    pass
-    
-    except Exception as e:
-        print(f"Ошибка LPR печати: {e}")
-        return False
-
-def get_printer_status(printer_name):
-    """
-    Получить статус принтера
-    """
-    try:
-        import win32print
-        
-        handle = win32print.OpenPrinter(printer_name)
-        printer_info = win32print.GetPrinter(handle, 0)
-        win32print.ClosePrinter(handle)
-        
-        return {
-            'name': printer_info[1],
-            'status': printer_info[9],
-            'jobs': printer_info[10]
-        }
-    except:
-        return None
-
-# Тестирование
-if __name__ == '__main__':
-    # Тестовый текст
-    test_text = """
-================================================
-                   ТЕСТ ПЕЧАТИ
-================================================
-Это тестовый чек для принтера
-================================================
-Дата: 2024-01-01
-Время: 12:00:00
-Статус: OK
-================================================
-"""
-    
-    print("Доступные принтеры:")
-    try:
-        import win32print
-        for printer in win32print.EnumPrinters(2):
-            print(f"  - {printer[2]}")
-    except:
-        print("  Не удалось получить список принтеров")
