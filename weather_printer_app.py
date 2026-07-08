@@ -19,6 +19,7 @@ DEFAULT_CONFIG = {
     "city": "Chișinău",
     "printer_name": "",
     "tape_width_mm": 60,
+    "receipt_width_chars": 24,
     "schedule": {
         "enabled": False,
         "time": "09:00",
@@ -37,18 +38,18 @@ def save_config(config):
         json.dump(config, f, indent=4, ensure_ascii=False)
 
 def get_windows_printers():
-    """Получить список принтеров Windows"""
+    """Get list of Windows printers"""
     try:
         import win32print
         printers = []
-        for printer in win32print.EnumPrinters(2):  # 2 = PRINTER_ENUM_LOCAL
-            printers.append(printer[2])  # Имя принтера
+        for printer in win32print.EnumPrinters(2):
+            printers.append(printer[2])
         return printers
     except:
         return []
 
 def is_weather_bot_running():
-    """Проверить, запущен ли фоновый скрипт"""
+    """Check if background service is running"""
     for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
         try:
             cmdline = proc.info['cmdline']
@@ -59,7 +60,7 @@ def is_weather_bot_running():
     return False
 
 def start_weather_bot():
-    """Запустить фоновый скрипт"""
+    """Start background service"""
     if not is_weather_bot_running():
         subprocess.Popen(['python', 'weather_bot.py'], 
                         stdout=subprocess.DEVNULL, 
@@ -69,7 +70,7 @@ def start_weather_bot():
     return True
 
 def stop_weather_bot():
-    """Остановить фоновый скрипт"""
+    """Stop background service"""
     for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
         try:
             cmdline = proc.info['cmdline']
@@ -83,11 +84,11 @@ def stop_weather_bot():
 # HTML Template
 HTML_TEMPLATE = """
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Погода на Чеке</title>
+    <title>Weather Receipt Printer</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -126,7 +127,7 @@ HTML_TEMPLATE = """
             font-weight: 600;
             font-size: 14px;
         }
-        input[type="text"], input[type="time"], select {
+        input[type="text"], input[type="time"], select, input[type="number"] {
             width: 100%;
             padding: 12px;
             border: 2px solid #ddd;
@@ -135,18 +136,10 @@ HTML_TEMPLATE = """
             margin-bottom: 8px;
             transition: border-color 0.3s;
         }
-        input[type="text"]:focus, input[type="time"]:focus, select:focus {
+        input[type="text"]:focus, input[type="time"]:focus, select:focus, input[type="number"]:focus {
             outline: none;
             border-color: #667eea;
             background: #f8f9ff;
-        }
-        input[type="number"] {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 14px;
-            margin-bottom: 8px;
         }
         .checkbox-group {
             display: flex;
@@ -228,75 +221,79 @@ HTML_TEMPLATE = """
             color: #888;
             margin-top: 5px;
         }
-        .loading { opacity: 0.5; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>☀️ Погода на Чеке</h1>
+        <h1>☀ Weather Receipt</h1>
         
         <div id="status" class="status stopped">
-            Фоновый сервис: <strong id="status-text">ОСТАНОВЛЕН</strong>
+            Service: <strong id="status-text">STOPPED</strong>
         </div>
 
         <div class="section">
-            <label>API ключ OpenWeatherMap</label>
+            <label>OpenWeatherMap API Key</label>
             <input type="text" id="api_key" placeholder="sk-xxxxxxxxxxxxx">
-            <div class="info-text">Получить на openweathermap.org</div>
+            <div class="info-text">Get at openweathermap.org</div>
         </div>
 
         <div class="section">
-            <label>Город</label>
+            <label>City</label>
             <input type="text" id="city" placeholder="Chișinău">
         </div>
 
         <div class="section">
-            <label>Принтер</label>
+            <label>Printer</label>
             <select id="printer">
-                <option value="">-- Выбери принтер --</option>
+                <option value="">-- Select printer --</option>
             </select>
-            <div class="info-text">Доступные принтеры Windows</div>
+            <div class="info-text">Available Windows printers</div>
         </div>
 
         <div class="section">
-            <label>Ширина ленты (мм)</label>
+            <label>Tape Width (mm)</label>
             <input type="number" id="tape_width" min="32" max="80" value="60">
         </div>
 
         <div class="section">
-            <h3 style="margin-bottom: 15px; font-size: 16px;">📅 Расписание</h3>
+            <label>Receipt Width (characters)</label>
+            <input type="number" id="receipt_width" min="16" max="80" value="24">
+            <div class="info-text">Characters per line (16-80)</div>
+        </div>
+
+        <div class="section">
+            <h3 style="margin-bottom: 15px; font-size: 16px;">📅 Schedule</h3>
             <label>
                 <input type="checkbox" id="schedule_enabled">
-                Включить автоматическую печать
+                Enable auto print
             </label>
             
-            <label style="margin-top: 15px;">Время печати</label>
+            <label style="margin-top: 15px;">Print Time</label>
             <input type="time" id="schedule_time" value="09:00">
             
-            <label style="margin-top: 15px;">Дни недели</label>
+            <label style="margin-top: 15px;">Days of Week</label>
             <div class="checkbox-group">
-                <label><input type="checkbox" name="day" value="MON"> Пн</label>
-                <label><input type="checkbox" name="day" value="TUE"> Вт</label>
-                <label><input type="checkbox" name="day" value="WED"> Ср</label>
-                <label><input type="checkbox" name="day" value="THU"> Чт</label>
-                <label><input type="checkbox" name="day" value="FRI"> Пт</label>
-                <label><input type="checkbox" name="day" value="SAT"> Сб</label>
-                <label><input type="checkbox" name="day" value="SUN"> Вс</label>
+                <label><input type="checkbox" name="day" value="MON"> Mon</label>
+                <label><input type="checkbox" name="day" value="TUE"> Tue</label>
+                <label><input type="checkbox" name="day" value="WED"> Wed</label>
+                <label><input type="checkbox" name="day" value="THU"> Thu</label>
+                <label><input type="checkbox" name="day" value="FRI"> Fri</label>
+                <label><input type="checkbox" name="day" value="SAT"> Sat</label>
+                <label><input type="checkbox" name="day" value="SUN"> Sun</label>
             </div>
         </div>
 
         <div class="button-group">
-            <button class="btn-primary" onclick="printNow()">🖨️ Печать Сейчас</button>
-            <button class="btn-danger" onclick="refreshPrinters()">🔄 Обновить</button>
+            <button class="btn-primary" onclick="printNow()">🖨 Print Now</button>
+            <button class="btn-danger" onclick="refreshPrinters()">🔄 Refresh</button>
         </div>
 
         <div class="button-group" style="grid-template-columns: 1fr;">
-            <button class="btn-success" onclick="saveAndStart()">💾 Сохранить и Запустить</button>
+            <button class="btn-success" onclick="saveAndStart()">💾 Save & Start</button>
         </div>
     </div>
 
     <script>
-        // Загрузить конфиг при открытии страницы
         async function loadConfig() {
             try {
                 const response = await fetch('/api/config');
@@ -306,6 +303,7 @@ HTML_TEMPLATE = """
                 document.getElementById('city').value = config.city;
                 document.getElementById('printer').value = config.printer_name;
                 document.getElementById('tape_width').value = config.tape_width_mm;
+                document.getElementById('receipt_width').value = config.receipt_width_chars || 24;
                 
                 document.getElementById('schedule_enabled').checked = config.schedule.enabled;
                 document.getElementById('schedule_time').value = config.schedule.time;
@@ -314,11 +312,10 @@ HTML_TEMPLATE = """
                     document.querySelector(`input[name="day"][value="${day}"]`).checked = true;
                 });
             } catch (err) {
-                console.error('Ошибка загрузки конфига:', err);
+                console.error('Error loading config:', err);
             }
         }
 
-        // Загрузить список принтеров
         async function refreshPrinters() {
             try {
                 const response = await fetch('/api/printers');
@@ -326,7 +323,7 @@ HTML_TEMPLATE = """
                 const select = document.getElementById('printer');
                 const current = select.value;
                 
-                select.innerHTML = '<option value="">-- Выбери принтер --</option>';
+                select.innerHTML = '<option value="">-- Select printer --</option>';
                 printers.forEach(printer => {
                     const option = document.createElement('option');
                     option.value = printer;
@@ -336,12 +333,11 @@ HTML_TEMPLATE = """
                 
                 select.value = current;
             } catch (err) {
-                console.error('Ошибка загрузки принтеров:', err);
-                alert('Ошибка получения списка принтеров');
+                console.error('Error loading printers:', err);
+                alert('Error getting printer list');
             }
         }
 
-        // Сохранить конфиг и запустить сервис
         async function saveAndStart() {
             const days = Array.from(document.querySelectorAll('input[name="day"]:checked'))
                 .map(el => el.value);
@@ -351,6 +347,7 @@ HTML_TEMPLATE = """
                 city: document.getElementById('city').value,
                 printer_name: document.getElementById('printer').value,
                 tape_width_mm: parseInt(document.getElementById('tape_width').value),
+                receipt_width_chars: parseInt(document.getElementById('receipt_width').value),
                 schedule: {
                     enabled: document.getElementById('schedule_enabled').checked,
                     time: document.getElementById('schedule_time').value,
@@ -359,15 +356,15 @@ HTML_TEMPLATE = """
             };
 
             if (!config.openweather_api_key) {
-                alert('Укажи API ключ OpenWeatherMap!');
+                alert('Enter OpenWeatherMap API key!');
                 return;
             }
             if (!config.city) {
-                alert('Укажи город!');
+                alert('Enter city!');
                 return;
             }
             if (!config.printer_name) {
-                alert('Выбери принтер!');
+                alert('Select printer!');
                 return;
             }
 
@@ -380,30 +377,28 @@ HTML_TEMPLATE = """
 
                 if (response.ok) {
                     const result = await response.json();
-                    alert('Конфиг сохранён! Сервис ' + (result.running ? 'запущен' : 'запускается'));
+                    alert('Config saved!');
                     updateStatus();
                 } else {
-                    alert('Ошибка сохранения конфига');
+                    alert('Error saving config');
                 }
             } catch (err) {
-                console.error('Ошибка:', err);
-                alert('Ошибка сохранения конфига');
+                console.error('Error:', err);
+                alert('Error saving config');
             }
         }
 
-        // Печать сейчас
         async function printNow() {
             try {
                 const response = await fetch('/api/print-now', { method: 'POST' });
                 const result = await response.json();
                 alert(result.message);
             } catch (err) {
-                console.error('Ошибка печати:', err);
-                alert('Ошибка печати');
+                console.error('Print error:', err);
+                alert('Print error');
             }
         }
 
-        // Обновить статус сервиса
         async function updateStatus() {
             try {
                 const response = await fetch('/api/status');
@@ -413,17 +408,16 @@ HTML_TEMPLATE = """
                 
                 if (data.running) {
                     statusEl.className = 'status running';
-                    statusText.textContent = 'ЗАПУЩЕН ✓';
+                    statusText.textContent = 'RUNNING ✓';
                 } else {
                     statusEl.className = 'status stopped';
-                    statusText.textContent = 'ОСТАНОВЛЕН';
+                    statusText.textContent = 'STOPPED';
                 }
             } catch (err) {
-                console.error('Ошибка статуса:', err);
+                console.error('Status error:', err);
             }
         }
 
-        // Инициализация
         loadConfig();
         refreshPrinters();
         updateStatus();
@@ -449,7 +443,7 @@ def save_and_start_config():
     return jsonify({
         "saved": True,
         "running": running,
-        "message": "Конфиг сохранён и сервис запущен" if running else "Конфиг сохранён"
+        "message": "Config saved and service started" if running else "Config saved"
     })
 
 @app.route('/api/printers', methods=['GET'])
@@ -465,11 +459,11 @@ def print_now():
     try:
         response = requests.post('http://localhost:5001/print-now', timeout=5)
         if response.ok:
-            return jsonify({"message": "Печать запущена"})
+            return jsonify({"message": "Printing..."})
         else:
-            return jsonify({"message": "Ошибка печати"}), 500
+            return jsonify({"message": "Print error"}), 500
     except:
-        return jsonify({"message": "Фоновый сервис не отвечает"}), 500
+        return jsonify({"message": "Service not responding"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000, host='127.0.0.1')

@@ -3,6 +3,7 @@
     "city": "Chișinău",
     "printer_name": "80mm Series Printer",
     "tape_width_mm": 58,
+    "receipt_width_chars": 24,
     "schedule": {
         "enabled": false,
         "time": "09:00",

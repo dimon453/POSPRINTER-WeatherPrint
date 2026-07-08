@@ -54,7 +54,7 @@ def print_weather():
         
         # Отформатировать чек
         print(f"[{datetime.now()}] Форматирую чек...")
-        receipt_text = format_receipt(weather_data, tape_width)
+        receipt_text = format_receipt(weather_data, config.get('receipt_width_chars', 24))
         
         # Напечатать
         print(f"[{datetime.now()}] Печатаю на {printer_name}...")
