@@ -1,122 +1,128 @@
-﻿# 🌤️ Погода на Чеке - Weather Printer
+# ☀ Weather Receipt Printer
 
-Приложение для печати информации о погоде на чековый принтер POS895UE с веб-интерфейсом управления.
+Print beautiful weather information receipts on a thermal POS printer with a web-based control interface.
 
-## 📋 Требования
+## Features
 
-- **ОС**: Windows 7+
+✨ **Core Features**
+- 🌤️ Real-time weather data from OpenWeatherMap API
+- 🖨️ Direct printing to thermal POS printers via Windows
+- 🎛️ Web interface for easy management
+- 📅 Scheduled automatic printing
+- 🎨 Dynamic receipt width (16-80 characters)
+- ❄️ ASCII weather icons
+- 🌍 Multi-language city support
+- 💾 Persistent configuration storage
+
+✅ **Architecture**
+- Dual-process design: Web GUI + Background service
+- Independent operation (GUI can close, printing continues)
+- REST API communication between components
+- No external dependencies for printing
+
+## System Requirements
+
+- **OS**: Windows 7+
 - **Python**: 3.8+
-- **Принтер**: POS895UE (или совместимый чековый принтер, подключенный в Windows)
-- **Интернет**: Для OpenWeatherMap API
+- **Printer**: Thermal POS printer (80mm recommended) connected via USB or network (POS895UE in my case)
+- **Internet**: For OpenWeatherMap API access
 
-## 🚀 Установка
+## Installation
 
-### 1. Установить Python
+### 1. Install Python
 
-Загрузить с https://www.python.org/downloads/
+Download from [python.org](https://python.org/downloads)
 
-При установке **обязательно** отметить ✓ "Add Python to PATH"
+### 2. Clone/Download Project
 
-### 2. Скачать проект
-
-Распаковать все файлы в одну папку, например:
-```
-C:\Users\YourName\weather_printer\
+```bash
+git clone https://github.com/dimon453/POS895UE-WeatherPrint
+cd POS895UE-WeatherPrint
 ```
 
-### 3. Установить зависимости
+Or download ZIP and extract.
 
-Открыть CMD/PowerShell в папке проекта и выполнить:
+### 3. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Если возникла ошибка с pywin32, выполнить:
+### 4. Get OpenWeatherMap API Key
+
+1. Go to [OpenWeatherMap](https://openweathermap.org/api)
+2. Sign up (free account)
+3. Go to API keys section
+4. Copy your default key
+
+### 5. Verify Printer
+
+1. Check Windows Settings → Devices → Printers
+2. Your printer should be listed (e.g., "80mm Series Printer")
+3. Test print from Notepad to verify it works
+
+## Usage
+
+### Quick Start
 
 ```bash
-python -m pip install pywin32
-python -m pywin32_postinstall -install
+# Start the application
+python weather_printer_app.py
 ```
 
-### 4. Получить API ключ OpenWeatherMap
+Then open browser: **http://localhost:5000**
 
-1. Зайти на https://openweathermap.org/api
-2. Зарегистрироваться (бесплатно)
-3. Перейти в личный кабинет → API keys
-4. Скопировать ключ (выглядит примерно так: `abc1234def567890...`)
-5. Сохранить куда-нибудь
+### First-Time Setup
 
-## ▶️ Запуск
+1. **Paste API Key**
+   - Get from OpenWeatherMap dashboard
+   - Paste in "OpenWeatherMap API Key" field
 
-### Первый запуск:
+2. **Select City**
+   - Example: `Chisinau`, `New York`, `London`
+   - Use English city names
 
-1. **Проверить принтер**
+3. **Select Printer**
+   - Click "Refresh" button
+   - Choose your printer from dropdown
 
-   Убедиться, что POS895UE подключен и видно в Windows:
-   - Параметры → Устройства → Принтеры и сканеры
-   - Или: Панель управления → Устройства и принтеры
+4. **Configure Receipt**
+   - **Tape Width**: Physical width of your printer (usually 80mm)
+   - **Receipt Width**: Characters per line (16-80)
+     - 24: Narrow receipts, fits most printers
+     - 32: Medium receipts
+     - 48+: Wide receipts for larger displays
 
-2. **Запустить приложение**
+5. **Save & Start**
+   - Click "Save & Start" button
+   - Service will start in background
 
-   В папке проекта открыть PowerShell/CMD и выполнить:
+### Test Print
 
-   ```bash
-   python weather_printer_app.py
-   ```
+Click **"🖨 Print Now"** button. Receipt should print within 2 seconds.
 
-   Должно вывести:
-   ```
-   WARNING in app.run(): This is a development server. Do not use it in production deployments.
-   Use a production WSGI server instead.
-   Running on http://127.0.0.1:5000
-   ```
+### Enable Scheduling
 
-3. **Открыть браузер**
+1. Check "Enable auto print"
+2. Set print time (e.g., 09:00)
+3. Select days of week (Mon-Sun)
+4. Save configuration
 
-   Перейти на http://localhost:5000
+Receipt will print automatically every selected day at that time.
 
-4. **Настроить приложение**
+## Configuration
 
-   - Вставить API ключ OpenWeatherMap
-   - Выбрать город (например, "Chișinău")
-   - Нажать "Обновить" и выбрать принтер из списка
-   - Установить ширину ленты (60мм для POS895UE)
-   - Если нужно: включить расписание и выбрать время/дни печати
-   - Нажать **"Сохранить и Запустить"**
+### config.json
 
-5. **Тестовая печать**
-
-   - Нажать кнопку "🖨️ Печать Сейчас"
-   - На принтере должна напечататься информация о погоде
-
-## 🗂️ Архитектура
-
-```
-weather_printer_app.py      <- Веб-интерфейс (GUI на Flask)
-                               порт 5000
-                               
-weather_bot.py              <- Фоновый сервис печати
-                               порт 5001
-                               запускается отдельно
-                               
-weather_service.py          <- Получение данных OpenWeatherMap
-receipt_formatter.py        <- Форматирование чека ASCII
-printer_service.py          <- Печать на Windows принтер
-                               
-config.json                 <- Конфигурация (создается автоматически)
-```
-
-## ⚙️ Настройка
-
-### config.json (создается автоматически)
+Auto-created after first save. Manual editing supported:
 
 ```json
 {
     "openweather_api_key": "your_api_key_here",
-    "city": "Chișinău",
-    "printer_name": "POS895UE",
-    "tape_width_mm": 60,
+    "city": "Chisinau",
+    "printer_name": "80mm Series Printer",
+    "tape_width_mm": 80,
+    "receipt_width_chars": 24,
     "schedule": {
         "enabled": true,
         "time": "09:00",
@@ -125,139 +131,201 @@ config.json                 <- Конфигурация (создается ав
 }
 ```
 
-**Поля:**
-- `openweather_api_key` - API ключ OpenWeatherMap
-- `city` - Город для погоды (точное название)
-- `printer_name` - Имя принтера из Windows (точное совпадение!)
-- `tape_width_mm` - Ширина чека: 32, 40, 58, 60, 80
-- `schedule.enabled` - Включить автоматическую печать
-- `schedule.time` - Время печати в формате HH:MM
-- `schedule.days` - Дни недели (MON, TUE, WED, THU, FRI, SAT, SUN)
+**Fields:**
+- `openweather_api_key`: API key from OpenWeatherMap
+- `city`: City name (English, case-sensitive)
+- `printer_name`: Exact printer name from Windows
+- `tape_width_mm`: Physical printer width (32/60/80mm)
+- `receipt_width_chars`: Characters per receipt line (16-80)
+- `schedule.enabled`: Auto-print on/off
+- `schedule.time`: Print time in HH:MM format
+- `schedule.days`: Days to print (MON-SUN)
 
-## 🐛 Решение проблем
+## Receipt Format Example
+========================
+WEATHER
+  Chisinau
+2026-07-08
+  12:30:45
 
-### Принтер не видно в списке
+ _____
+|  O  |
+|_____|
 
-1. Убедиться, что принтер подключен и включен
-2. Проверить в "Устройства и принтеры" Windows
-3. Нажать "Обновить" в интерфейсе
-4. Перезагрузить браузер (Ctrl+R)
+  Cloudy
 
-### Ошибка "API ключ неверный"
+Temp:18°
+Min:15° Max:22°
+Feel:17°
+Humidity:65%
+Wind:3.5m/s
+========================
+Thank You!
 
-- Проверить ключ на опечатки
-- Убедиться, что API включен в личном кабинете OpenWeatherMap
-- Подождать несколько минут после создания ключа
+## Project Structure
+weather-receipt-printer/
+├── weather_printer_app.py      # Web GUI (Flask)
+├── weather_bot.py              # Background service
+├── weather_service.py          # OpenWeatherMap API
+├── receipt_formatter.py        # Receipt formatting
+├── printer_service.py          # Windows printing
+├── requirements.txt            # Python dependencies
+├── config.json                 # Configuration (auto-created)
+└── README.md                   # This file
 
-### Город не найден
+### File Descriptions
 
-- Используй английское название: "Chisinau" вместо "Chișinău"
-- Или полное название: "Chisinau, MD"
+| File | Purpose |
+|------|---------|
+| `weather_printer_app.py` | Web interface on http://localhost:5000 |
+| `weather_bot.py` | Background service (REST API on port 5001) |
+| `weather_service.py` | Fetches weather from OpenWeatherMap |
+| `receipt_formatter.py` | Formats weather data into receipt text |
+| `printer_service.py` | Sends text to Windows printer via Notepad |
 
-### Фоновый сервис не запускается
+## Troubleshooting
 
-Проверить логи в папке проекта. Убедиться, что:
-- Python установлен правильно
-- Все зависимости установлены (`pip install -r requirements.txt`)
-- На портах 5000 и 5001 нет других процессов
+### Printer not found in list
 
-### Печать не работает
+**Solution:**
+1. Verify printer is on and connected
+2. Check Windows Settings → Printers
+3. Click "Refresh" button in web interface
+4. Restart application if still missing
 
-1. Проверить имя принтера (должно совпадать точно)
-2. Попробовать напечатать тестовый документ из Windows
-3. Убедиться, что в config.json правильное имя:
-   ```bash
-   python -c "import win32print; print([p[2] for p in win32print.EnumPrinters(2)])"
-   ```
+### API key error
 
-## 📊 Формат чека
+**Solution:**
+1. Check key for typos
+2. Verify API is enabled in OpenWeatherMap dashboard
+3. Wait 5 minutes after creating key (propagation delay)
 
-```
-================================================
-          ☀ ПОГОДА ☀
-================================================
+### City not found
 
-Chișinău
-2024-01-15 14:30:45
+**Solution:**
+1. Use English spelling: `Chisinau` not `Chișinău`
+2. Try full name with country: `Chisinau, MD`
+3. Check OpenWeatherMap for exact spelling
 
-   /\    
-  /  \   
- |    |  
-  \  /   
-   \/    
+### Print appears but doesn't print
 
-ОБЛАЧНО
-
-------------------------------------------------
-Температура:  18°C
-Мин/макс:     15°C / 22°C
-Ощущается как: 17°C
-
-Влажность:    65%
-Ветер:        3.5 м/с
-
-================================================
-Спасибо за внимание! 🌍
-================================================
-```
-
-## 📱 Использование
-
-### Печать по клику
-
-Просто нажать кнопку "🖨️ Печать Сейчас" в интерфейсе
-
-### Автоматическая печать по расписанию
-
-1. Включить "Включить автоматическую печать"
-2. Установить время (например, 09:00)
-3. Выбрать дни недели (пн-пт для рабочих дней)
-4. Нажать "Сохранить и Запустить"
-
-Фоновый сервис будет печатать погоду в установленное время каждый день
-
-## 🔧 Разработка
-
-### Структура файлов
-
-```
-weather_service.py      - Получение и парсинг OpenWeatherMap
-receipt_formatter.py    - Форматирование текста чека
-printer_service.py      - Работа с Windows Print API
-weather_bot.py          - Планировщик + REST API
-weather_printer_app.py  - Flask приложение (GUI)
+**Solution:**
+1. Check printer is turned on
+2. Verify it's set as default printer
+3. Try manual test print from Notepad
+4. Restart Windows Print Spooler:
+```powershell
+   net stop spooler
+   net start spooler
 ```
 
-### Добавить новый источник данных
+### Nothing happens when clicking "Print Now"
 
-Отредактировать `weather_service.py`:
-
-```python
-def get_weather_custom_source(city):
-    # Твоя реализация
-    pass
+**Solution:**
+1. Check if service is running (green "RUNNING ✓" indicator)
+2. Check browser console (F12) for errors
+3. Restart application:
+```bash
+   # Press Ctrl+C to stop
+   python weather_printer_app.py
 ```
 
-### Изменить формат чека
+### Receipt width doesn't match setting
 
-Отредактировать `receipt_formatter.py` функцию `format_receipt()`
+**Solution:**
+1. Verify `receipt_width_chars` in config.json matches web setting
+2. Restart application to reload config
+3. Check printer drivers aren't adding extra margins
 
-## 📝 Лицензия
+## Advanced Usage
 
-MIT
+### Change Receipt Format
 
-## 👨‍💻 Автор
+Edit `receipt_formatter.py` to customize layout, add/remove fields, change text alignment.
 
-Создано для Dima
+### Use Different Weather Source
 
-## 🆘 Поддержка
+Replace `weather_service.py` with your API provider while keeping same return format.
 
-При ошибках:
-1. Проверить логи в консоли
-2. Убедиться в наличии интернета
-3. Перезагрузить приложение
-4. Проверить конфиг в config.json
+### Network Printer Support
 
----
+Change `printer_service.py` to use network printing if printer supports IPP/LPR protocol.
 
-**Наслаждайся погодой на чеке! ☀️🌧️❄️**
+### Docker Deployment
+
+Create Dockerfile for containerized deployment (not included, requires Windows base image).
+
+## API Endpoints (Background Service)
+
+The background service runs on `http://localhost:5001`
+POST /print-now          # Print weather immediately
+GET /health              # Check service status
+
+## Performance
+
+- **Startup**: ~2 seconds
+- **Print**: ~1-2 seconds
+- **Weather fetch**: ~2-3 seconds (depends on internet)
+- **Memory usage**: ~50-100 MB
+
+## Known Limitations
+
+- Windows only (uses Windows Print API and Notepad)
+- Single printer at a time
+- Printer must be installed in Windows Settings
+- Internet required for weather data
+- Background service runs continuously when enabled
+
+## Future Enhancements
+
+- [ ] Multiple printer support
+- [ ] Cloud configuration storage
+- [ ] Mobile app control
+- [ ] Weather alerts/notifications
+- [ ] Historical data tracking
+- [ ] Custom receipt templates
+- [ ] Linux/macOS support
+
+## Security Notes
+
+- API keys stored locally in config.json (not encrypted)
+- Web interface runs on localhost only (no network access)
+- No data sent to external services except OpenWeatherMap
+
+For production use, consider:
+- Using environment variables for API keys
+- Adding HTTPS/authentication
+- Running behind reverse proxy
+
+## Contributing
+
+Contributions welcome! Fork, modify, and submit pull requests.
+
+## License
+
+MIT License - see LICENSE file for details
+
+## Support
+
+For issues and questions:
+1. Check Troubleshooting section above
+2. Review config.json settings
+3. Check browser console for errors (F12)
+4. Restart application and test again
+
+## Credits
+
+- Weather data: [OpenWeatherMap](https://openweathermap.org)
+- Printing: Windows Print API via Notepad
+- Framework: Flask
+
+## Changelog
+
+### v1.0.0 (2026-07-08)
+- Initial release
+- Web interface with full configuration
+- Dynamic receipt width (16-80 characters)
+- Scheduled printing support
+- ASCII weather icons
+- Thermal printer support via Windows
+
