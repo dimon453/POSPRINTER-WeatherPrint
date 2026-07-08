@@ -141,26 +141,7 @@ Auto-created after first save. Manual editing supported:
 - `schedule.time`: Print time in HH:MM format
 - `schedule.days`: Days to print (MON-SUN)
 
-## Receipt Format Example
-========================
-WEATHER
-  Chisinau
-2026-07-08
-  12:30:45
 
- _____
-|  O  |
-|_____|
-
-  Cloudy
-
-Temp:18°
-Min:15° Max:22°
-Feel:17°
-Humidity:65%
-Wind:3.5m/s
-========================
-Thank You!
 
 ## Project Structure
 weather-receipt-printer/
